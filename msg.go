@@ -3,10 +3,10 @@ package wechat
 import (
 	"encoding/xml"
 	"fmt"
-	"time"
 )
 
 type MsgInfo struct {
+	ID           int64  `xml:"omitempty",orm:"id"`
 	MsgType      string `xml:"MsgType,cdata",orm:"MsgType"`
 	Event        string `xml:"Event",orm:"Event"`
 	ToUserName   string `xml:"ToUserName,cdata",orm:"ToUserName"`
@@ -30,7 +30,11 @@ func MsgHandle(data []byte) (interface{}, error) {
 		log.Error(err)
 		return nil, err
 	}
-	msg.Load(data)
+
+	if err := xml.Unmarshal(data, msg); err != nil {
+		return nil, err
+	}
+
 	if arc, ok := msg.(Archiver); ok {
 		err := arc.Archive()
 		if err != nil {
@@ -38,49 +42,43 @@ func MsgHandle(data []byte) (interface{}, error) {
 		}
 	}
 	return msg.MsgHandle()
-
 }
 
-func (m *MsgInfo) getResource() (msg MsgHandler) {
+func (m *MsgInfo) getResource() MsgHandler {
 	switch m.MsgType {
 	case "text":
-		msg = new(TextMsg)
+		return new(TextMsg)
 	case "image":
-		msg = new(ImageMsg)
+		return new(ImageMsg)
 	case "voice":
-		msg = new(VoiceMsg)
+		return new(VoiceMsg)
 	case "video":
-		msg = new(VideoMsg)
+		return new(VideoMsg)
 	case "location":
-		msg = new(LocationMsg)
+		return new(LocationMsg)
 	case "link":
-		msg = new(LinkMsg)
+		return new(LinkMsg)
 	case "event":
 		switch m.Event {
 		case "subscribe":
-			msg = new(SubscribeEvent)
+			return new(SubscribeEvent)
 		case "unsubscribe":
-			msg = new(UnsubscribeEvent)
+			// TODO; not sure
+			return new(ScribeEvent)
 		case "SCAN":
-			msg = new(ScanEvent)
+			return new(ScanEvent)
 		case "LOCATION":
-			msg = new(LocationEvent)
+			return new(LocationEvent)
 		case "CLICK":
-			msg = new(ClickEvent)
+			return new(ClickEvent)
 		case "VIEW":
-			msg = new(ViewEvent)
+			return new(ViewEvent)
 		}
-	default:
-		return nil
 	}
-	return
+	return nil
 }
 
-func (m *MsgInfo) WriteText(data string) {
-	xmlfmt := `<xml><ToUserName><![CDATA[%s]]>CD</ToUserName><FromUserName><![CDATA[%s]]></FromUserName><CreateTime>%d</CreateTime><MsgType><![CDATA[text]]></MsgType><Content><![CDATA[%s]]></Content></xml>`
-	body := fmt.Sprintf(xmlfmt, m.FromUserName, m.ToUserName, time.Now().Unix(), data)
-	log.Info("receive body: ", string(m.content))
-	log.Info("send body: ", body)
-	m.w.WriteHeader(http.StatusOK)
-	m.w.Write([]byte(body))
+// default auto response
+func (m *MsgInfo) MsgHandle() (interface{}, error) {
+	return NewTextResposeMessage(m.ToUserName, m.FromUserName, "Go Go Go!!!"), nil
 }

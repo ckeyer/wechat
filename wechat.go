@@ -3,6 +3,7 @@ package wechat
 import (
 	"crypto/sha1"
 	"fmt"
+	"io"
 	"sort"
 
 	"github.com/astaxie/beego/orm"
@@ -26,8 +27,7 @@ func init() {
 }
 
 func RegDB() {
-	orm.RegisterDriver("mysql", orm.DR_MySQL)
-	orm.RegisterDataBase("default", "mysql", config.Mysql.GetConnStr())
+	// orm.RegisterDataBase("default", "mysql", config.Mysql.GetConnStr())
 
 	orm.RegisterModel(new(TextMsg),
 		new(ImageMsg),
@@ -50,7 +50,6 @@ func Auth(signature, timestamp, nonce, echostr string) bool {
 	}(tmpStr)
 
 	if tmp == signature {
-		w.Write([]byte(echostr))
 		return true
 	}
 	log.Debug("auth receive: ", tmp)
