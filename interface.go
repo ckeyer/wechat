@@ -1,7 +1,7 @@
 package wechat
 
 type MsgHandler interface {
-	MsgHandle() (interface{}, error)
+	MsgHandle() (*ResponseMessage, error)
 }
 
 type Archiver interface {

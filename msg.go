@@ -3,40 +3,43 @@ package wechat
 import (
 	"encoding/xml"
 	"fmt"
+	"time"
 )
 
 type MsgInfo struct {
-	ID           int64  `xml:"omitempty",orm:"id"`
-	MsgType      string `xml:"MsgType,cdata",orm:"MsgType"`
-	Event        string `xml:"Event",orm:"Event"`
-	ToUserName   string `xml:"ToUserName,cdata",orm:"ToUserName"`
-	FromUserName string `xml:"FromUserName,cdata",orm:"FromUserName"`
-	CreateTime   int    `xml:"CreateTime",orm:"CreateTime"`
+	ID           int64 `xml:"omitempty",orm:"id"`
+	MsgType      CData `xml:"MsgType",orm:"MsgType"`
+	Event        CData `xml:"Event",orm:"Event"`
+	ToUserName   CData `xml:"ToUserName",orm:"ToUserName"`
+	FromUserName CData `xml:"FromUserName",orm:"FromUserName"`
+	CreateTime   int   `xml:"CreateTime",orm:"CreateTime"`
 }
 
-func MsgHandle(data []byte) (interface{}, error) {
+func MsgHandle(data []byte) (rm *ResponseMessage, err error) {
 	v := &MsgInfo{}
-	var bs []byte
-	copy(bs, data)
-	err := xml.Unmarshal(bs, v)
+	bs := data[:]
+
+	err = xml.Unmarshal(bs, v)
 	if err != nil {
 		log.Error(err)
-		return nil, err
+		return
 	}
+	log.Debugf("msginfo: %#v", v)
 
 	msg := v.getResource()
 	if msg == nil {
-		err := fmt.Errorf("%s", "Unknown message type.")
+		err = fmt.Errorf("%s", "Unknown message type.")
 		log.Error(err)
-		return nil, err
+		return
 	}
 
-	if err := xml.Unmarshal(data, msg); err != nil {
-		return nil, err
+	if err = xml.Unmarshal(data, msg); err != nil {
+		return
 	}
+	log.Debugf("msg: %#v", msg)
 
 	if arc, ok := msg.(Archiver); ok {
-		err := arc.Archive()
+		err = arc.Archive()
 		if err != nil {
 			log.Errorf("Archived err, ", err)
 		}
@@ -45,7 +48,7 @@ func MsgHandle(data []byte) (interface{}, error) {
 }
 
 func (m *MsgInfo) getResource() MsgHandler {
-	switch m.MsgType {
+	switch m.MsgType.Content {
 	case "text":
 		return new(TextMsg)
 	case "image":
@@ -59,7 +62,7 @@ func (m *MsgInfo) getResource() MsgHandler {
 	case "link":
 		return new(LinkMsg)
 	case "event":
-		switch m.Event {
+		switch m.Event.Content {
 		case "subscribe":
 			return new(SubscribeEvent)
 		case "unsubscribe":
@@ -79,6 +82,6 @@ func (m *MsgInfo) getResource() MsgHandler {
 }
 
 // default auto response
-func (m *MsgInfo) MsgHandle() (interface{}, error) {
-	return NewTextResposeMessage(m.ToUserName, m.FromUserName, "Go Go Go!!!"), nil
+func (m *MsgInfo) MsgHandle() (*ResponseMessage, error) {
+	return NewTextResposeMessage(m.ToUserName.Content, m.FromUserName.Content, time.Now().String()), nil
 }

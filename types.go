@@ -1,34 +1,45 @@
 package wechat
 
 import (
+	"encoding/xml"
 	"time"
 )
 
-type ResponseMessage struct {
-	ToUserName   string `xml:"ToUserName,cdata"`
-	FromUserName string `xml:"FromUserName,cdata"`
-	CreateTime   int64  `xml:"CreateTime"`
-	MsgType      string `xml:"MsgType,cdata"`
-
-	Content      string `xml:"Content,cdata,omitempty"`
-	MediaId      string `xml:"MediaId,cdata,omitempty"`
-	Title        string `xml:"Title,cdata,omitempty"`
-	Description  string `xml:"Description,cdata,omitempty"`
-	MusicURL     string `xml:"MusicURL,cdata,omitempty"`
-	HQMusicUrl   string `xml:"HQMusicUrl,cdata,omitempty"`
-	ThumbMediaId string `xml:"ThumbMediaId,cdata,omitempty"`
-	ArticleCount int    `xml:"ArticleCount,omitempty"`
-	Articles     string `xml:"Articles,cdata,omitempty"`
-	PicUrl       string `xml:"PicUrl,cdata,omitempty"`
-	Url          string `xml:"Url,cdata,omitempty"`
+type CData struct {
+	Content string `xml:",cdata"`
 }
 
-func NewTextResposeMessage(to, from, content string) *ResponseMessage {
-	return &ResponseMessage{
-		ToUserName:   to,
-		FromUserName: from,
+type ResponseMessage struct {
+	XMLName xml.Name `xml:"xml"`
+
+	ToUserName   *CData `xml:"ToUserName"`
+	FromUserName *CData `xml:"FromUserName"`
+	CreateTime   int64  `xml:"CreateTime"`
+	MsgType      *CData `xml:"MsgType"`
+
+	Content      *CData `xml:"Content,omitempty"`
+	MediaId      *CData `xml:"MediaId,omitempty"`
+	Title        *CData `xml:"Title,omitempty"`
+	Description  *CData `xml:"Description,omitempty"`
+	MusicURL     *CData `xml:"MusicURL,omitempty"`
+	HQMusicUrl   *CData `xml:"HQMusicUrl,omitempty"`
+	ThumbMediaId *CData `xml:"ThumbMediaId,omitempty"`
+	ArticleCount int    `xml:"ArticleCount,omitempty"`
+	Articles     *CData `xml:"Articles,omitempty"`
+	PicUrl       *CData `xml:"PicUrl,omitempty"`
+	Url          *CData `xml:"Url,omitempty"`
+}
+
+func NewTextResposeMessage(from, to, content string) *ResponseMessage {
+	rs := &ResponseMessage{
+		ToUserName:   &CData{to},
+		FromUserName: &CData{from},
 		CreateTime:   time.Now().Unix(),
-		MsgType:      "text",
-		Content:      content,
+		MsgType:      &CData{"text"},
+		Content:      &CData{content},
 	}
+	bs, err := xml.Marshal(rs)
+	log.Debugf("err %s", err)
+	log.Debug(string(bs))
+	return rs
 }
